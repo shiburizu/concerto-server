@@ -4,6 +4,8 @@ app = Flask(__name__)
 
 lobby_list = {}
 
+CURRENT_VERSION = '6-22-2021'
+
 def gen_resp(msg,status):
     resp = {
         'status' : status,
@@ -27,6 +29,7 @@ class Lobby():
         self.secret = random.randint(1000,9999) #secret required for lobby actions
         self.player_list = {}
         self.id = new_id
+        self.last_id = 1 #last ID assigned to keep IDs unique
         self.host = new_player
         self.player_list.update({1:Player(new_player,1)})
         if type:
@@ -35,14 +38,9 @@ class Lobby():
             self.type = 'Private'
     
     def join(self,new_player):
-        n = 1
-        while True:
-            if n in self.player_list:
-                n += 1
-            else:
-                break
-        self.player_list.update({n:Player(new_player,n)})
-        return n
+        self.last_id += 1
+        self.player_list.update({self.last_id:Player(new_player,)})
+        return self.last_id
 
     def response(self,player_id,msg='OK'):
         if player_id in self.player_list:
@@ -59,15 +57,7 @@ class Lobby():
             self.prune_members()
             return resp
         else:
-            resp = {
-                'id' : self.id,
-                'status' : 'OK',
-                'msg'    : msg,
-                'users'  : [[i.name,i.id,i.status,i.target,i.ip,i.last_ping] for i in self.player_list.values()]
-            }
-            print(resp)
-            self.prune_members()
-            return resp
+            return gen_resp('You are not in this lobby.','FAIL')
     
     def idle(self): #iterate over items to get player info as a list
         return [[i.name,i.id] for i in self.player_list.values() if i.status == "idle"]
@@ -107,34 +97,38 @@ class Lobby():
             print("Pruned %s" % i)
     
     def send_challenge(self,id,target,ip):
-        p = self.player_list.get(id)
-        p.target = target
-        p.ip = ip
-        return gen_resp('OK','OK')
+        if id in self.player_list:
+            p = self.player_list.get(id)
+            p.target = target
+            p.ip = ip
+            return gen_resp('OK','OK')
+        else:
+            return gen_resp('Not in lobby.','FAIL')
 
     def accept_challenge(self,id,target):
-        p1 = self.player_list.get(target)
-        p2 = self.player_list.get(id)
-        p1.status = "playing"
-        p2.status = "playing"
-        p2.target = target #so we know who they are playing in lobby state
-        return gen_resp('OK','OK')
+        if id in self.player_list and target in self.player_list:
+            p1 = self.player_list.get(target)
+            p2 = self.player_list.get(id)
+            p1.status = "playing"
+            p2.status = "playing"
+            p2.target = target #so we know who they are playing in lobby state
+            return gen_resp('OK','OK')
+        else:
+            return gen_resp('Not in lobby.','FAIL')
 
     def end(self,id): #reset both players on a single end, since it represents a disconnect anyway. None for spectator
-        p2 = self.player_list.get(id)
-
-        if p2.target:
-            if p2.target in self.player_list:
-                p1 = self.player_list.get(p2.target)
-                p1.status = "idle"
-                p1.target = None
-                p1.ip = None
-        
-        p2.status = "idle"
-        p2.target = None
-        p2.ip = None
-            
-        return gen_resp('OK','OK')
+        if id in self.player_list:
+            p2 = self.player_list.get(id)
+            if p2.target:
+                if p2.target in self.player_list:
+                    p1 = self.player_list.get(p2.target)
+                    p1.status = "idle"
+                    p1.target = None
+                    p1.ip = None
+            p2.status = "idle"
+            p2.target = None
+            p2.ip = None  
+            return gen_resp('OK','OK')
 
     def leave(self,id):
         if id in self.player_list:
@@ -147,8 +141,6 @@ class Lobby():
             self.player_list.pop(id)
         self.prune_members()
         return gen_resp('OK','OK')
-
-CURRENT_VERSION = '6-22-2021'
 
 @app.route('/v')
 def version_check():
@@ -210,7 +202,7 @@ def lobby_server():
             p = lobby_list[int(lobby_id)].join(player_name) 
             r = lobby_list[int(lobby_id)].response(p,msg=p)
             r['secret'] = lobby_list[int(lobby_id)].secret
-            return  r
+            return r
         return gen_resp('Join action failed','FAIL')
     #lobby functions, ID is needed from client
     if lobby_id is not None and secret is not None:
