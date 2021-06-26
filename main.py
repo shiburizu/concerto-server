@@ -39,7 +39,7 @@ class Lobby():
     
     def join(self,new_player):
         self.last_id += 1
-        self.player_list.update({self.last_id:Player(new_player,)})
+        self.player_list.update({self.last_id:Player(new_player,self.last_id)})
         return self.last_id
 
     def response(self,player_id,msg='OK'):
