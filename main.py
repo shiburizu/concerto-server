@@ -198,6 +198,10 @@ def lobby_server():
         print(resp['lobbies'])
         return resp
     if action == "join" and lobby_id is not None:
+        try:
+            int(lobby_id)
+        except ValueError:
+            return gen_resp('Invalid Lobby code','FAIL')
         if player_name is not None and int(lobby_id) in lobby_list:
             p = lobby_list[int(lobby_id)].join(player_name) 
             r = lobby_list[int(lobby_id)].response(p,msg=p)
