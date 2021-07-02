@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 lobby_list = {}
 
-CURRENT_VERSION = '6-22-2021'
+CURRENT_VERSION = '7-2-2021'
 
 def gen_resp(msg,status):
     resp = {
