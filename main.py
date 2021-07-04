@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 lobby_list = {}
 
-CURRENT_VERSION = '7-2-2021r2'
+CURRENT_VERSION = '7-3-2021'
 
 def gen_resp(msg,status):
     resp = {
@@ -93,7 +93,7 @@ class Lobby():
             if diff > 6:
                 d.append(k)
         for i in d:
-            self.player_list.pop(i)
+            self.leave(self.player_list.get(i).id)
             print("Pruned %s" % i)
     
     def send_challenge(self,id,target,ip):
