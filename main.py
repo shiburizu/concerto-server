@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 lobby_list = {}
 
-CURRENT_VERSION = '7-3-2021r2'
+CURRENT_VERSION = '7-5-2021'
 
 def gen_resp(msg,status):
     resp = {
@@ -90,7 +90,7 @@ class Lobby():
         d = []
         for k,v in self.player_list.items():
             diff = now - v.last_ping
-            if diff > 6:
+            if diff > 10:
                 d.append(k)
         for i in d:
             self.leave(self.player_list.get(i).id)
