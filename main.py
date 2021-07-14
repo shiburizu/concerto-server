@@ -48,7 +48,7 @@ class Lobby(db.Model):
             'playing' : self.playing(),
             'challenges' : self.challenges(player_id)
         }
-        print(resp)
+        #print(resp)
         return resp
 
     def join(self,new_player):
@@ -242,7 +242,7 @@ def lobby_server():
             'status' : 'OK',
             'lobbies' : [[i.code,len(i.players)] for i in l]
         }
-        print(resp)
+        #print(resp)
         return resp
     elif action == "join" and lobby_id:
         try:
