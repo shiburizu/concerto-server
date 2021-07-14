@@ -7,7 +7,7 @@ CURRENT_VERSION = '7-5-2021'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE']
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 
 db = SQLAlchemy(app)
 
@@ -288,7 +288,7 @@ def lobby_server():
         else:
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
-    
+
 '''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
