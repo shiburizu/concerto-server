@@ -7,7 +7,7 @@ CURRENT_VERSION = '7-5-2021'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
 
