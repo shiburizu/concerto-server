@@ -14,7 +14,7 @@ db = SQLAlchemy(app)
 class Lobby(db.Model):
     uid = db.Column(db.Integer, primary_key=True, unique=True)
 
-    code = db.Column(db.Integer, nullable=False) #code used by players
+    code = db.Column(db.Integer, nullable=False, unique=True) #code used by players
     secret = db.Column(db.Integer, nullable=False) #secret for authentication
     last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
     type = db.Column(db.String(32), nullable=False) #lobby type for filtering
