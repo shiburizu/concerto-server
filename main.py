@@ -1,10 +1,173 @@
 from flask import Flask, request
-import random,time,os
+from flask_sqlalchemy import SQLAlchemy
+import random,os,datetime
 app = Flask(__name__)
 
-lobby_list = {}
-
 CURRENT_VERSION = '7-5-2021'
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE']
+
+db = SQLAlchemy(app)
+
+class Lobby(db.Model):
+    uid = db.Column(db.Integer, primary_key=True)
+
+    code = db.Column(db.Integer, nullable=False) #code used by players
+    secret = db.Column(db.Integer, nullable=False) #secret for authentication
+    last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
+    type = db.Column(db.String(32), nullable=False) #lobby type for filtering
+
+    def __init__(self,new_id,type):
+        self.secret = random.randint(1000,9999) #secret required for lobby actions
+        self.code = new_id
+        self.last_id = 1 #last ID assigned to keep IDs unique
+        if type:
+            self.type = type
+        else:
+            self.type = 'Private'
+
+    def prune(self):
+        now = datetime.datetime.now()
+        for i in self.players:
+            if (now-i.last_ping).total_seconds() > 10:
+                self.leave(i.lobby_id)
+
+    def response(self,player_id,msg='OK'):
+        p = self.validate_id(player_id)
+        p.last_ping = datetime.datetime.now()
+        db.session.add(p)
+        db.session.commit()
+        self.prune()
+        resp = {
+            'id' : self.code,
+            'status' : 'OK',
+            'msg' : msg,
+            'idle' : [[i.name,i.lobby_id] for i in self.players],
+            'playing' : self.playing(),
+            'challenges' : self.challenges(player_id)
+        }
+        print(resp)
+        return resp
+
+    def join(self,new_player):
+        self.last_id += 1
+        p = Player(new_player,self.last_id)
+        self.players.append(p)
+        db.session.add(p)
+        db.session.add(self)
+        db.session.commit()
+        return self.last_id
+
+    def playing(self):
+        found_ids = []
+        resp = []
+        for i in self.players:
+            if i.status == 'playing' and i.lobby_id not in found_ids and i.target not in found_ids:
+                resp.append([i.name,self.name_by_id(i.target),i.lobby_id,i.target,i.ip])
+                found_ids.append(i.id)
+                found_ids.append(i.target)
+        return resp
+
+    def challenges(self,player_id):
+        resp = []
+        for i in self.players:
+            if i.target == player_id and i.status != 'playing':
+                resp.append([i.name,i.lobby_id,i.ip])
+        return resp
+
+    def name_by_id(self,id): #this could be faster
+        for i in self.players:
+            if i.lobby_id == id:
+                return i.name
+        return None
+
+    def validate_id(self,id):
+        for i in self.players:
+            if i.lobby_id == id:
+                return i
+        return None
+
+    def send_challenge(self,id,target,ip):
+        p = self.validate_id(id)
+        if p:
+            p.target = target
+            p.ip = ip
+            db.session.add(p)
+            db.session.commit()
+            return gen_resp('OK','OK')
+        else:
+            return gen_resp('Not in lobby.','FAIL')
+
+    def accept_challenge(self,id,target):
+        p1 = self.validate_id(target)
+        p2 = self.validate_id(id)
+        if p1 and p2:
+            p1.status = "playing"
+            p2.status = "playing"
+            p2.target = target
+            db.session.add(p1)
+            db.session.add(p2)
+            db.session.commit()
+        else:
+            return gen_resp('Not in lobby.','FAIL')
+
+    def end(self,id):
+        p1 = self.validate_id(id)
+        if p1:
+            if p1.target:
+                p2 = self.validate_id(p1.target)
+                if p2:
+                    p2.status = "idle"
+                    p2.target = None
+                    p2.ip = None
+                    db.session.add(p2)
+            p1.status = "idle"
+            p1.target = None
+            p1.ip = None
+            db.session.add(p1)
+            db.session.commit()
+            return gen_resp('OK','OK')
+        return gen_resp('Not in lobby.','FAIL')
+
+    def leave(self,id):
+        p1 = self.validate_id(id)
+        if p1:
+            if p1.target:
+                p2 = self.validate_id(p1.target)
+                if p2:
+                    p2.status = "idle"
+                    p2.target = None
+                    p2.ip = None
+                    db.session.add(p2)
+            self.players.remove(p1)
+            db.session.delete(p1)
+            db.session.commit()
+        return gen_resp('OK','OK')
+
+class Player(db.Model):
+    uid = db.Column(db.Integer, primary_key=True) #id in the table
+
+    lobby_id = db.Column(db.Integer, nullable=False) #id in the lobby
+    name = db.Column(db.String(16), nullable=False) #player name
+    last_ping = db.Column(db.DateTime, nullable=False) #timestamp of last ping
+    status = db.Column(db.String(32), nullable=False) #current status
+    ip = db.Column(db.String(32), nullable=True) #IP if challenging
+    target = db.Column(db.Integer, nullable=True) #target if challenging
+
+    #relationship to lobby
+    lobby_code = db.Column(db.Integer, db.ForeignKey('lobby.code'), nullable = False)
+    lobby = db.relationship('Lobby',backref=db.backref('players'),lazy=True)
+
+    def __init__(self,new_name,new_id):
+        self.lobby_id = new_id
+        self.name = new_name
+        self.last_ping = datetime.datetime.now()
+        self.status = 'idle'
+        self.ip = None
+        self.target = None
+
 
 def gen_resp(msg,status):
     resp = {
@@ -13,134 +176,28 @@ def gen_resp(msg,status):
     }
     return resp
 
-class Player():
-
-    def __init__(self,new_name,new_id):
-        self.id = new_id
-        self.name = new_name
-        self.last_ping = time.monotonic()
-        self.status = "idle"
-        self.ip = None
-        self.target = None
-
-class Lobby():
-
-    def __init__(self,new_id,new_player,type):
-        self.secret = random.randint(1000,9999) #secret required for lobby actions
-        self.player_list = {}
-        self.id = new_id
-        self.last_id = 1 #last ID assigned to keep IDs unique
-        self.host = new_player
-        self.player_list.update({1:Player(new_player,1)})
-        if type:
-            self.type = type
+def purge_old(lst):
+    cleanup = []
+    for i in lst:
+        if i.players != []:
+            for p in i.players:
+                now = datetime.datetime.now()
+                if (now-p.last_ping).total_seconds() > 10:
+                    i.leave(p.lobby_id)
+            if p == []:
+                cleanup.append(i)
         else:
-            self.type = 'Private'
-    
-    def join(self,new_player):
-        self.last_id += 1
-        self.player_list.update({self.last_id:Player(new_player,self.last_id)})
-        return self.last_id
+            cleanup.append(i)
+    if cleanup != []:
+        for i in cleanup:
+            db.session.delete(i)
+            lst.remove(i)
+        db.session.commit()
+    return lst
 
-    def response(self,player_id,msg='OK'):
-        if player_id in self.player_list:
-            self.player_list.get(player_id).last_ping = time.monotonic()
-            resp = {
-                'id' : self.id,
-                'status' : 'OK',
-                'msg'    : msg,
-                'idle'   : self.idle(),
-                'playing': self.playing(),
-                'challenges': self.challenges(player_id)
-            }
-            print(resp)
-            self.prune_members()
-            return resp
-        else:
-            return gen_resp('You are not in this lobby.','FAIL')
-    
-    def idle(self): #iterate over items to get player info as a list
-        return [[i.name,i.id] for i in self.player_list.values() if i.status == "idle"]
-    
-    def playing(self):
-        found_ids = []
-        resp = []
-        for i in self.player_list.values():
-            if i.status == "playing" and i.id not in found_ids and i.target not in found_ids and i.ip is not None:
-                resp.append([i.name,self.find_name_by_id(i.target),i.id,i.target,i.ip])
-                found_ids.append(i.id)
-                found_ids.append(i.target)
-        return resp
-
-    def challenges(self,player_id):
-        resp = []
-        for i in self.player_list.values():
-            if i.target == player_id and i.status != 'playing':
-                resp.append([i.name,i.id,i.ip])
-        return resp
-
-    def find_name_by_id(self,id):
-        if id in self.player_list:
-            return self.player_list.get(id).name
-        else:
-            return None
-    
-    def prune_members(self):
-        now = time.monotonic() 
-        d = []
-        for k,v in self.player_list.items():
-            diff = now - v.last_ping
-            if diff > 10:
-                d.append(k)
-        for i in d:
-            self.leave(self.player_list.get(i).id)
-            print("Pruned %s" % i)
-    
-    def send_challenge(self,id,target,ip):
-        if id in self.player_list:
-            p = self.player_list.get(id)
-            p.target = target
-            p.ip = ip
-            return gen_resp('OK','OK')
-        else:
-            return gen_resp('Not in lobby.','FAIL')
-
-    def accept_challenge(self,id,target):
-        if id in self.player_list and target in self.player_list:
-            p1 = self.player_list.get(target)
-            p2 = self.player_list.get(id)
-            p1.status = "playing"
-            p2.status = "playing"
-            p2.target = target #so we know who they are playing in lobby state
-            return gen_resp('OK','OK')
-        else:
-            return gen_resp('Not in lobby.','FAIL')
-
-    def end(self,id): #reset both players on a single end, since it represents a disconnect anyway. None for spectator
-        if id in self.player_list:
-            p2 = self.player_list.get(id)
-            if p2.target:
-                if p2.target in self.player_list:
-                    p1 = self.player_list.get(p2.target)
-                    p1.status = "idle"
-                    p1.target = None
-                    p1.ip = None
-            p2.status = "idle"
-            p2.target = None
-            p2.ip = None  
-            return gen_resp('OK','OK')
-
-    def leave(self,id):
-        if id in self.player_list:
-            if self.player_list.get(id).target != None:
-                if self.player_list.get(id).target in self.player_list:
-                    t = self.player_list.get(id).target
-                    self.player_list.get(t).status = "idle"
-                    self.player_list.get(t).target = None
-                    self.player_list.get(t).ip = None
-            self.player_list.pop(id)
-        self.prune_members()
-        return gen_resp('OK','OK')
+@app.before_first_request
+def create_tables():
+    db.create_all()
 
 @app.route('/v')
 def version_check():
@@ -160,76 +217,78 @@ def lobby_server():
     player_ip = request.args.get('ip')
     secret = request.args.get('secret')
     type = request.args.get('type')
-    #lobby create/list, ID is not needed from client and lobbyExists not needed
-    if action == "create": #create lobby, provide name
+    
+    if action == 'create':
         if player_name:
             new_id = random.randint(1000,9999)
             while True:
-                if new_id in lobby_list:
-                    new_id = random.randint(1000,9999)
-                else:
+                if Lobby.query.filter_by(code=new_id).first() is None:
                     break
-            new_room = Lobby(new_id,player_name,type)
-            lobby_list[new_id] = new_room
+                else:
+                    new_id = random.randint(1000,9999)
+            new_room = Lobby(new_id,type)
+            new_player = Player(player_name,1)
+            new_room.players.append(new_player)
+            db.session.add(new_room)
+            db.session.add(new_player)
+            db.session.commit()
             r = new_room.response(1,msg=1)
             r['secret'] = new_room.secret
             return r
-        else:
-            return gen_resp('Create action failed','FAIL')
-    elif action == "list": #get all public lobbies
-        clean = []
-        lobbies = []
-        for k,v in lobby_list.items():
-            v.prune_members()
-            if len(v.player_list) > 0:
-                if v.type == 'Public':
-                    lobbies.append([k,len(v.player_list)])
-                else:
-                    pass
-            else:
-                clean.append(k)
-        for i in clean: #cleanup empty servers
-            lobby_list.pop(i)
+    elif action == "list":
+        l = purge_old(Lobby.query.filter_by(type = "Public").all())
         resp = {
-            'msg':'OK',
-            'status':'OK',
-            'lobbies': [[k,len(v.player_list)] for k,v in lobby_list.items() if len(v.player_list) > 0 and v.type == 'Public']
+            'msg' : 'OK',
+            'status' : 'OK',
+            'lobbies' : [[i.code,len(i.players)] for i in l]
         }
-        print(resp['lobbies'])
+        print(resp)
         return resp
-    if action == "join" and lobby_id is not None:
+    elif action == "join" and lobby_id:
         try:
             int(lobby_id)
         except ValueError:
-            return gen_resp('Invalid Lobby code','FAIL')
-        if player_name is not None and int(lobby_id) in lobby_list:
-            p = lobby_list[int(lobby_id)].join(player_name) 
-            r = lobby_list[int(lobby_id)].response(p,msg=p)
-            r['secret'] = lobby_list[int(lobby_id)].secret
-            return r
+            return gen_resp('Invalid lobby code.','FAIL')
+        if player_name and Lobby.query.filter_by(code=int(lobby_id)).first():
+            l = Lobby.query.filter_by(code=int(lobby_id)).first()
+            if l.players != []:
+                p = l.join(player_name)
+                resp = l.response(p,msg=p)
+                resp['secret'] = l.secret
+                return resp
+            else:
+                db.session.delete(l)
+                db.session.commit()
+                return gen_resp('Invalid lobby code.','FAIL')
         return gen_resp('Join action failed','FAIL')
-    #lobby functions, ID is needed from client
-    if lobby_id is not None and secret is not None:
-        if int(lobby_id) in lobby_list and lobby_list[int(lobby_id)].secret == int(secret):
-            #lobby exists and secret is correct, read
-            if action == "challenge": #send challenge, set IP from host and target to ID
-                return lobby_list[int(lobby_id)].send_challenge(int(player_id),int(target_id),player_ip)
-            elif action == "accept": #accept challenge, tell server to update players to "playing"
-                return lobby_list[int(lobby_id)].accept_challenge(int(player_id),int(target_id))
-            elif action == "end": #game or spectate ended for player
-                return lobby_list[int(lobby_id)].end(int(player_id))
-            elif action == "leave": #leave lobby
-                return lobby_list[int(lobby_id)].leave(int(player_id))
-            elif action == "status": #get update on the lobby
-                return lobby_list[int(lobby_id)].response(int(player_id))
-            return gen_resp('lobby_id Action failed','FAIL')
+    elif lobby_id and secret:
+        try:
+            int(lobby_id)
+            int(secret)
+        except ValueError:
+            return gen_resp('Invalid lobby code.','FAIL')
+        l = Lobby.query.filter_by(code=int(lobby_id)).first()
+        if l:
+            if l.secret == int(secret):
+                if action == "challenge":
+                    return l.send_challenge(int(player_id),int(target_id),player_ip)
+                elif action == "accept":
+                    return l.accept_challenge(int(player_id),int(target_id))
+                elif action == "end":
+                    return l.end(int(player_id))
+                elif action == "leave":
+                    resp = l.leave(int(player_id))
+                    if len(l.players) == 0:
+                        db.session.delete(l)
+                        db.session.commit()
+                    return resp
+                elif action == "status":
+                    return l.response(int(player_id))
+                return gen_resp('lobby action failed','FAIL')
         else:
-            print(lobby_id)
-            print(action)
-            return gen_resp('No Lobby found','FAIL')
-    #no action at all
+            return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
-
+    
 '''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
