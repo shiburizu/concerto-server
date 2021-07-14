@@ -12,7 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 db = SQLAlchemy(app)
 
 class Lobby(db.Model):
-    uid = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.Integer, primary_key=True, unique=True)
 
     code = db.Column(db.Integer, nullable=False) #code used by players
     secret = db.Column(db.Integer, nullable=False) #secret for authentication
@@ -147,7 +147,7 @@ class Lobby(db.Model):
         return gen_resp('OK','OK')
 
 class Player(db.Model):
-    uid = db.Column(db.Integer, primary_key=True) #id in the table
+    uid = db.Column(db.Integer, primary_key=True, unique=True) #id in the table
 
     lobby_id = db.Column(db.Integer, nullable=False) #id in the lobby
     name = db.Column(db.String(16), nullable=False) #player name
