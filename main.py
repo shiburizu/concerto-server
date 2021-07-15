@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 app = Flask(__name__)
 
-CURRENT_VERSION = '7-13-2021r2'
+CURRENT_VERSION = '7-14-2021'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -64,7 +64,7 @@ class Lobby(db.Model):
         found_ids = []
         resp = []
         for i in self.players:
-            if i.status == 'playing' and i.lobby_id not in found_ids and i.target not in found_ids:
+            if i.status == 'playing' and i.lobby_id not in found_ids and i.target not in found_ids and i.ip is not None:
                 resp.append([i.name,self.name_by_id(i.target),i.lobby_id,i.target,i.ip])
                 found_ids.append(i.lobby_id)
                 found_ids.append(i.target)
