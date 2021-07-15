@@ -44,7 +44,7 @@ class Lobby(db.Model):
             'id' : self.code,
             'status' : 'OK',
             'msg' : msg,
-            'idle' : [[i.name,i.lobby_id] for i in self.players],
+            'idle' : [[i.name,i.lobby_id] for i in self.players if i.status == 'idle'],
             'playing' : self.playing(),
             'challenges' : self.challenges(player_id)
         }
