@@ -66,7 +66,7 @@ class Lobby(db.Model):
         for i in self.players:
             if i.status == 'playing' and i.lobby_id not in found_ids and i.target not in found_ids:
                 resp.append([i.name,self.name_by_id(i.target),i.lobby_id,i.target,i.ip])
-                found_ids.append(i.id)
+                found_ids.append(i.lobby_id)
                 found_ids.append(i.target)
         return resp
 
@@ -110,6 +110,7 @@ class Lobby(db.Model):
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
+            return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
 
