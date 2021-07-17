@@ -120,10 +120,11 @@ class Lobby(db.Model):
             if p1.target:
                 p2 = self.validate_id(p1.target)
                 if p2:
-                    p2.status = "idle"
-                    p2.target = None
-                    p2.ip = None
-                    db.session.add(p2)
+                    if p2.target == id: #make sure other player is targeting us
+                        p2.status = "idle"
+                        p2.target = None
+                        p2.ip = None
+                        db.session.add(p2)
             p1.status = "idle"
             p1.target = None
             p1.ip = None
