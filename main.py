@@ -212,11 +212,14 @@ def version_check():
 
 @app.route('/s') #statistics
 def stats():
-    if request.args.get('action') == 'list':
+    action = request.args.get('action')
+    limit = request.args.get('limit')
+    lobby_id = request.args.get('id')
+    if action == 'list':
         l = 8
-        if request.args.get('limit'):
+        if limit:
             try:
-                l = int(request.args.get('limit'))
+                l = int(limit)
             except ValueError:
                 return gen_resp('Bad limit argument.','FAIL')
         lst = purge_old(Lobby.query.filter_by(type = "Public").limit(l).all())
@@ -235,6 +238,11 @@ def stats():
             lobby.update({'playing':p})
             resp.update({n.code:lobby})
         return resp
+    elif action == 'check':
+        l = purge_old([Lobby.query.filter_by(code=int(lobby_id)).first()])
+        if l != []:
+            return gen_resp('OK','OK')
+        gen_resp('Lobby does not exist.','FAIL')
     return gen_resp('Invalid stats action','FAIL')
 
 @app.route('/l') #lobby functions
