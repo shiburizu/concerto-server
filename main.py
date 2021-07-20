@@ -7,7 +7,8 @@ CURRENT_VERSION = '7-19-2021r2'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
+#os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
 
@@ -209,6 +210,33 @@ def version_check():
         else:
             return gen_resp('A newer version is available. Visit concerto.shib.live to update.','FAIL')
 
+@app.route('/s') #statistics
+def stats():
+    if request.args.get('action') == 'list':
+        l = 8
+        if request.args.get('limit'):
+            try:
+                l = int(request.args.get('limit'))
+            except ValueError:
+                return gen_resp('Bad limit argument.','FAIL')
+        lst = purge_old(Lobby.query.filter_by(type = "Public").limit(l).all())
+        resp = {}
+        for n in lst:
+            lobby = {
+                'idle' : [i.name for i in n.players if i.status == 'idle'],
+            }
+            found_ids = []
+            p = []
+            for i in n.players:
+                if i.status == 'playing' and i.lobby_id not in found_ids and i.target not in found_ids and i.ip is not None:
+                    p.append([i.name,n.name_by_id(i.target)])
+                    found_ids.append(i.lobby_id)
+                    found_ids.append(i.target)
+            lobby.update({'playing':p})
+            resp.update({n.code:lobby})
+        return resp
+    return gen_resp('Invalid stats action','FAIL')
+
 @app.route('/l') #lobby functions
 def lobby_server():
     action = request.args.get('action')
@@ -294,8 +322,6 @@ def lobby_server():
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
 
-'''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
 	app.run(host='0.0.0.0', port=port, debug=False)
-'''
