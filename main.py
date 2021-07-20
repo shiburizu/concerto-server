@@ -251,7 +251,7 @@ def stats():
             resp = gen_resp('OK','OK')
             resp.update({'type':l.type})
             return resp
-        gen_resp('Lobby does not exist.','FAIL')
+        return gen_resp('Lobby does not exist.','FAIL')
     return gen_resp('Invalid stats action','FAIL')
 
 @app.route('/l') #lobby functions
