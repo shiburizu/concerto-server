@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 app = Flask(__name__)
@@ -209,6 +209,11 @@ def version_check():
             return gen_resp('OK','OK')
         else:
             return gen_resp('A newer version is available. Visit concerto.shib.live to update.','FAIL')
+
+@app.route('/i/<id>')
+def lobby_link(id):
+    if id:
+        return redirect("concerto://lobby:%s" % id)
 
 @app.route('/s') #statistics
 def stats():
