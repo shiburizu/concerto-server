@@ -245,7 +245,9 @@ def stats():
     elif action == 'check':
         l = purge_old([Lobby.query.filter_by(code=int(lobby_id)).first()])
         if l != []:
-            return gen_resp('OK','OK')
+            resp = gen_resp('OK','OK')
+            resp.update({'type':l.type})
+            return resp
         gen_resp('Lobby does not exist.','FAIL')
     return gen_resp('Invalid stats action','FAIL')
 
