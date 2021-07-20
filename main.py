@@ -35,21 +35,24 @@ class Lobby(db.Model):
                 self.leave(i.lobby_id)
 
     def response(self,player_id,msg='OK'):
-        p = self.validate_id(player_id)
-        p.last_ping = datetime.datetime.now()
-        db.session.add(p)
-        db.session.commit()
         self.prune()
-        resp = {
-            'id' : self.code,
-            'status' : 'OK',
-            'msg' : msg,
-            'idle' : [[i.name,i.lobby_id] for i in self.players if i.status == 'idle'],
-            'playing' : self.playing(),
-            'challenges' : self.challenges(player_id)
-        }
-        #print(resp)
-        return resp
+        p = self.validate_id(player_id)
+        if p:
+            p.last_ping = datetime.datetime.now()
+            db.session.add(p)
+            db.session.commit()
+            self.prune()
+            resp = {
+                'id' : self.code,
+                'status' : 'OK',
+                'msg' : msg,
+                'idle' : [[i.name,i.lobby_id] for i in self.players if i.status == 'idle'],
+                'playing' : self.playing(),
+                'challenges' : self.challenges(player_id)
+            }
+            #print(resp)
+            return resp
+        return gen_resp('Not in lobby.','FAIL')
 
     def join(self,new_player):
         self.last_id += 1
@@ -160,7 +163,7 @@ class Player(db.Model):
 
     #relationship to lobby
     lobby_code = db.Column(db.Integer, db.ForeignKey('lobby.code'), nullable = False)
-    lobby = db.relationship('Lobby',backref=db.backref('players'),lazy=True)
+    lobby = db.relationship('Lobby',backref=db.backref('players'))
 
     def __init__(self,new_name,new_id):
         self.lobby_id = new_id
@@ -182,11 +185,8 @@ def purge_old(lst):
     cleanup = []
     for i in lst:
         if i.players != []:
-            for p in i.players:
-                now = datetime.datetime.now()
-                if (now-p.last_ping).total_seconds() > 10:
-                    i.leave(p.lobby_id)
-            if p == []:
+            i.prune()
+            if i.players == []:
                 cleanup.append(i)
         else:
             cleanup.append(i)
@@ -251,18 +251,21 @@ def lobby_server():
             int(lobby_id)
         except ValueError:
             return gen_resp('Invalid lobby code.','FAIL')
-        if player_name and Lobby.query.filter_by(code=int(lobby_id)).first():
+        if player_name:
             l = Lobby.query.filter_by(code=int(lobby_id)).first()
-            if l.players != []:
-                p = l.join(player_name)
-                resp = l.response(p,msg=p)
-                resp['secret'] = l.secret
-                return resp
-            else:
-                db.session.delete(l)
-                db.session.commit()
-                return gen_resp('Invalid lobby code.','FAIL')
-        return gen_resp('Join action failed','FAIL')
+            if l:
+                l.prune()
+                if l.players != []:
+                    p = l.join(player_name)
+                    resp = l.response(p,msg=p)
+                    resp['secret'] = l.secret
+                    return resp
+                else:
+                    db.session.delete(l)
+                    db.session.commit()
+                    return gen_resp('Empty lobby found.','FAIL')
+            return gen_resp('Lobby not found.','FAIL')
+        return gen_resp('No player name provided.','FAIL')
     elif lobby_id and secret:
         try:
             int(lobby_id)
