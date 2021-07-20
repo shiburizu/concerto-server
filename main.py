@@ -184,12 +184,15 @@ def gen_resp(msg,status):
 def purge_old(lst):
     cleanup = []
     for i in lst:
-        if i.players != []:
-            i.prune()
-            if i.players == []:
-                cleanup.append(i)
+        if i is None:
+            lst.remove(i)
         else:
-            cleanup.append(i)
+            if i.players != []:
+                i.prune()
+                if i.players == []:
+                    cleanup.append(i)
+            else:
+                cleanup.append(i)
     if cleanup != []:
         for i in cleanup:
             db.session.delete(i)
