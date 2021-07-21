@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 app = Flask(__name__)
 
-CURRENT_VERSION = ['7-19-2021r2','7-20-2021']
+CURRENT_VERSION = ['7-21-2021']
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
