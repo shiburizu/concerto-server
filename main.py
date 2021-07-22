@@ -11,7 +11,11 @@ CURRENT_VERSION = ['7-22-2021']
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
-WEBHOOK_URL = os.environ['DISCORD_WEBHOOK_URL']
+try:
+    WEBHOOK_URL = os.environ['DISCORD_WEBHOOK_URL']
+except:
+    WEBHOOK_URL = ''
+    pass
 
 db = SQLAlchemy(app)
 
@@ -154,53 +158,6 @@ class Lobby(db.Model):
             db.session.delete(p1)
             db.session.commit()
         return gen_resp('OK','OK')
-
-    def update_webhook(self):
-        if WEBHOOK_URL != None or WEBHOOK_URL != "":
-            lobbies = purge_old(Lobby.query.filter_by(type = "Public").all())
-
-            embeds = []
-
-            for l in lobbies:
-                # TODO: random color and timestamp
-                lobby = {
-                    'title': 'Lobby #' + l.id,
-                    'url': 'https://invite.meltyblood.club/' + l.id,
-                    'color': 9906987,
-                }
-                
-                playing = ""
-                idle = ""
-                
-                for p in l.players:
-                    found_ids = []
-                    if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
-                        playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
-                        found_ids.append(p.lobby_id)
-                        found_ids.append(p.target)
-                    if p.status == 'idle':
-                        idle += p.name + '\n'
-
-                fields = []
-
-                if playing != "":
-                    fields.append({'name': 'Playing', 'value': playing})
-                if idle != "":
-                    fields.append({'name': 'Idle', 'value': idle})
-
-                lobby.update({'fields': fields})
-
-            data = {
-                'content': '**Open Lobbies**',
-                'embeds': embeds 
-            }
-
-            try:
-                resp = requests.patch(WEBHOOK_URL, data=json.dumps(data), headers={'Content-Type': 'application/json'})
-                resp.raise_for_status()
-            except:
-                # print the errors idk how rn
-                pass
 
 class Player(db.Model):
     uid = db.Column(db.Integer, primary_key=True, unique=True) #id in the table
@@ -389,6 +346,56 @@ def lobby_server():
         else:
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
+
+def update_webhook():
+    if WEBHOOK_URL:
+        lobbies = purge_old(Lobby.query.filter_by(type = "Public").all())
+
+        embeds = []
+
+        for l in lobbies:
+            # TODO: random lobby colors would be cool and creation timestamps
+            lobby = {
+                'title': 'Lobby #' + str(l.code),
+                'url': 'https://invite.meltyblood.club/' + str(l.code),
+                'color': 9906987
+            }
+
+            playing = ""
+            idle = ""
+                
+            for p in l.players:
+                found_ids = []
+                if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
+                    playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
+                    found_ids.append(p.lobby_id)
+                    found_ids.append(p.target)
+                if p.status == 'idle':
+                    idle += p.name + '\n'
+
+            fields = []
+
+            if playing:
+                fields.append({'name': 'Playing', 'value': playing})
+            if idle:
+                fields.append({'name': 'Idle', 'value': idle})
+
+            lobby.update({'fields': fields})
+            embeds.append(lobby)
+
+        data = {
+            'content': '**__Open Lobbies__**\nLobbies created with Concerto\nClick on the lobby name to join',
+            'embeds': embeds 
+        }
+
+        print(data)
+
+        try:
+            resp = requests.patch(WEBHOOK_URL, data=json.dumps(data), headers={'Content-Type': 'application/json'})
+            resp.raise_for_status()
+        except:
+            # TODO: print the errors
+            pass
 
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
