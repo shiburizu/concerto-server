@@ -3,13 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import requests
 import json
-import threading
 
 app = Flask(__name__)
 
 CURRENT_VERSION = ['7-22-2021']
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+DISCORD_KEY = os.environ['DISCORD_KEY'] #to send requests to the secondary server
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
@@ -349,57 +348,11 @@ def lobby_server():
     return gen_resp('No action match','FAIL')
 
 def update_webhook():
-    hooks = []
-    messages = []
-    n = 0
-    while True:
-        if "DISCORD_%s" % n in os.environ and "MSG_%s" % n in os.environ:
-            hooks.append(os.environ["DISCORD_%s" % n])
-            messages.append(os.environ["MSG_%s" % n])
-            n += 1
-        else:
-            break
-
-    lobbies = purge_old(Lobby.query.filter_by(type = "Public").all())
-    embeds = []
-    for l in lobbies:
-        # TODO: random lobby colors would be cool and creation timestamps
-        lobby = {
-            'title': 'Lobby #' + str(l.code),
-            'url': 'https://invite.meltyblood.club/' + str(l.code),
-            'color': 9906987
-        }
-        playing = ""
-        idle = "" 
-        for p in l.players:
-            found_ids = [] 
-            if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
-                playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
-                found_ids.append(p.lobby_id)
-                found_ids.append(p.target)
-            if p.status == 'idle':
-                idle += p.name + '\n'
-
-        fields = []
-        if playing:
-            fields.append({'name': 'Playing', 'value': playing})
-        if idle:
-            fields.append({'name': 'Idle', 'value': idle})
-
-        lobby.update({'fields': fields})
-        embeds.append(lobby)
-
-    data = {
-        'content': '**__Open Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n',
-        'embeds': embeds 
+    PARAMS = {
+        'action' : 'webhook',
+        'key' : DISCORD_KEY
     }
-    if lobbies != []:
-        data['content'] += "Click on the lobby name to join."
-
-    for a,b in zip(hooks,messages):
-        url = a + "/messages/" + b
-        resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
-        resp.raise_for_status()
+    requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS)
 
 '''
 if __name__ == '__main__':
