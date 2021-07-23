@@ -6,7 +6,7 @@ import threading
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['7-22-2021']
+CURRENT_VERSION = ['7-23-2021']
 
 DISCORD_KEY = os.environ['DISCORD_KEY'] #to send requests to the secondary server
 
