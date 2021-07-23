@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import requests
 import json
+import threading
 
 app = Flask(__name__)
 
@@ -10,12 +11,8 @@ CURRENT_VERSION = ['7-22-2021']
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
-try:
-    WEBHOOK_URL = os.environ['DISCORD_WEBHOOK_URL']
-except:
-    WEBHOOK_URL = ''
-    pass
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
+#os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
 
@@ -69,6 +66,7 @@ class Lobby(db.Model):
         db.session.add(p)
         db.session.add(self)
         db.session.commit()
+        threading.Thread(target=update_webhook).start()
         return self.last_id
 
     def playing(self):
@@ -121,6 +119,7 @@ class Lobby(db.Model):
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
+            threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
@@ -141,6 +140,7 @@ class Lobby(db.Model):
             p1.ip = None
             db.session.add(p1)
             db.session.commit()
+            threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         return gen_resp('Not in lobby.','FAIL')
 
@@ -157,6 +157,7 @@ class Lobby(db.Model):
             self.players.remove(p1)
             db.session.delete(p1)
             db.session.commit()
+            threading.Thread(target=update_webhook).start()
         return gen_resp('OK','OK')
 
 class Player(db.Model):
@@ -289,6 +290,7 @@ def lobby_server():
             db.session.commit()
             r = new_room.response(1,msg=1)
             r['secret'] = new_room.secret
+            threading.Thread(target=update_webhook).start()
             return r
     elif action == "list":
         l = purge_old(Lobby.query.filter_by(type = "Public").all())
@@ -348,55 +350,63 @@ def lobby_server():
     return gen_resp('No action match','FAIL')
 
 def update_webhook():
-    if WEBHOOK_URL:
-        lobbies = purge_old(Lobby.query.filter_by(type = "Public").all())
+    hooks = []
+    messages = []
+    n = 0
+    while True:
+        if "DISCORD_%s" % n in os.environ and "MSG_%s" % n in os.environ:
+            hooks.append(os.environ["DISCORD_%s" % n])
+            messages.append(os.environ["MSG_%s" % n])
+            n += 1
+        else:
+            break
 
-        embeds = []
-
-        for l in lobbies:
-            # TODO: random lobby colors would be cool and creation timestamps
-            lobby = {
-                'title': 'Lobby #' + str(l.code),
-                'url': 'https://invite.meltyblood.club/' + str(l.code),
-                'color': 9906987
-            }
-
-            playing = ""
-            idle = ""
-                
-            for p in l.players:
-                found_ids = []
-                if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
-                    playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
-                    found_ids.append(p.lobby_id)
-                    found_ids.append(p.target)
-                if p.status == 'idle':
-                    idle += p.name + '\n'
-
-            fields = []
-
-            if playing:
-                fields.append({'name': 'Playing', 'value': playing})
-            if idle:
-                fields.append({'name': 'Idle', 'value': idle})
-
-            lobby.update({'fields': fields})
-            embeds.append(lobby)
-
-        data = {
-            'content': '**__Open Lobbies__**\nLobbies created with Concerto\nClick on the lobby name to join',
-            'embeds': embeds 
+    lobbies = purge_old(Lobby.query.filter_by(type = "Public").all())
+    embeds = []
+    for l in lobbies:
+        # TODO: random lobby colors would be cool and creation timestamps
+        lobby = {
+            'title': 'Lobby #' + str(l.code),
+            'url': 'https://invite.meltyblood.club/' + str(l.code),
+            'color': 9906987
         }
+        playing = ""
+        idle = "" 
+        for p in l.players:
+            found_ids = [] 
+            if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
+                playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
+                found_ids.append(p.lobby_id)
+                found_ids.append(p.target)
+            if p.status == 'idle':
+                idle += p.name + '\n'
 
-        print(data)
+        fields = []
+        if playing:
+            fields.append({'name': 'Playing', 'value': playing})
+        if idle:
+            fields.append({'name': 'Idle', 'value': idle})
 
-        try:
-            resp = requests.patch(WEBHOOK_URL, data=json.dumps(data), headers={'Content-Type': 'application/json'})
+        lobby.update({'fields': fields})
+        embeds.append(lobby)
+
+    data = {
+        'content': '**__Open Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n',
+        'embeds': embeds 
+    }
+    if lobbies != []:
+        data['content'] += "Click on the lobby name to join."
+    try:
+        for a,b in zip(hooks,messages):
+            url = a + "/messages/" + b
+            resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
+            print(resp.elapsed.total_seconds())
             resp.raise_for_status()
-        except:
-            # TODO: print the errors
-            pass
+    except:
+        pass #todo print error
 
+'''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
 	app.run(host='0.0.0.0', port=port, debug=False)
+'''
