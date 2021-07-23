@@ -399,7 +399,6 @@ def update_webhook():
     for a,b in zip(hooks,messages):
         url = a + "/messages/" + b
         resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
-        print(resp.elapsed.total_seconds())
         resp.raise_for_status()
 
 '''
