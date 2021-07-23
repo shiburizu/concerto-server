@@ -2,7 +2,7 @@ from flask import Flask, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import requests
-import json
+import threading
 
 app = Flask(__name__)
 
@@ -64,7 +64,7 @@ class Lobby(db.Model):
         db.session.add(p)
         db.session.add(self)
         db.session.commit()
-        update_webhook()
+        threading.Thread(target=update_webhook).start()
         return self.last_id
 
     def playing(self):
@@ -117,7 +117,7 @@ class Lobby(db.Model):
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
-            update_webhook()
+            threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
@@ -138,7 +138,7 @@ class Lobby(db.Model):
             p1.ip = None
             db.session.add(p1)
             db.session.commit()
-            update_webhook()
+            threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         return gen_resp('Not in lobby.','FAIL')
 
@@ -155,7 +155,7 @@ class Lobby(db.Model):
             self.players.remove(p1)
             db.session.delete(p1)
             db.session.commit()
-            update_webhook()
+            threading.Thread(target=update_webhook).start()
         return gen_resp('OK','OK')
 
 class Player(db.Model):
@@ -288,7 +288,7 @@ def lobby_server():
             db.session.commit()
             r = new_room.response(1,msg=1)
             r['secret'] = new_room.secret
-            update_webhook()
+            threading.Thread(target=update_webhook).start()
             return r
     elif action == "list":
         l = purge_old(Lobby.query.filter_by(type = "Public").all())
