@@ -11,8 +11,7 @@ CURRENT_VERSION = ['7-22-2021']
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
-#os.environ['DATABASE_CONCERTO']
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
 
