@@ -395,14 +395,12 @@ def update_webhook():
     }
     if lobbies != []:
         data['content'] += "Click on the lobby name to join."
-    try:
-        for a,b in zip(hooks,messages):
-            url = a + "/messages/" + b
-            resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
-            print(resp.elapsed.total_seconds())
-            resp.raise_for_status()
-    except:
-        pass #todo print error
+        
+    for a,b in zip(hooks,messages):
+        url = a + "/messages/" + b
+        resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
+        print(resp.elapsed.total_seconds())
+        resp.raise_for_status()
 
 '''
 if __name__ == '__main__':
