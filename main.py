@@ -34,7 +34,7 @@ class Lobby(db.Model):
     def prune(self):
         now = datetime.datetime.now()
         for i in self.players:
-            if (now-i.last_ping).total_seconds() > 10:
+            if (now-i.last_ping).total_seconds() > 20:
                 self.leave(i.lobby_id)
 
     def response(self,player_id,msg='OK'):
