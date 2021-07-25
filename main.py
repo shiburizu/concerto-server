@@ -28,6 +28,8 @@ class Lobby(db.Model):
         self.last_id = 1 #last ID assigned to keep IDs unique
         if type:
             self.type = type
+            if self.type == 'Public':
+                threading.Thread(target=update_webhook).start()
         else:
             self.type = 'Private'
 
@@ -116,7 +118,8 @@ class Lobby(db.Model):
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
-            threading.Thread(target=update_webhook).start()
+            if self.type == 'Public':
+                threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
@@ -137,7 +140,8 @@ class Lobby(db.Model):
             p1.ip = None
             db.session.add(p1)
             db.session.commit()
-            threading.Thread(target=update_webhook).start()
+            if self.type == 'Public':
+                threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         return gen_resp('Not in lobby.','FAIL')
 
@@ -154,7 +158,8 @@ class Lobby(db.Model):
             self.players.remove(p1)
             db.session.delete(p1)
             db.session.commit()
-            threading.Thread(target=update_webhook).start()
+            if self.type == 'Public':
+                threading.Thread(target=update_webhook).start()
         return gen_resp('OK','OK')
 
 class Player(db.Model):
@@ -284,7 +289,6 @@ def lobby_server():
             db.session.commit()
             r = new_room.response(1,msg=1)
             r['secret'] = new_room.secret
-            threading.Thread(target=update_webhook).start()
             return r
     elif action == "list":
         l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).all())
