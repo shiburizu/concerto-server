@@ -44,7 +44,6 @@ class Lobby(db.Model):
             p.last_ping = datetime.datetime.now()
             db.session.add(p)
             db.session.commit()
-            self.prune()
             resp = {
                 'id' : self.code,
                 'status' : 'OK',
