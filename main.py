@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import requests
