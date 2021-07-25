@@ -217,12 +217,7 @@ def version_check():
         if request.args.get('version') in CURRENT_VERSION:
             return gen_resp('OK','OK')
         else:
-            return gen_resp('A newer version is available. Visit concerto.shib.live to update.','FAIL')
-
-@app.route('/i/<id>')
-def lobby_link(id):
-    if id:
-        return redirect("concerto://lobby:%s" % id)
+            return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
 
 @app.route('/s') #statistics
 def stats():
@@ -236,7 +231,7 @@ def stats():
                 l = int(limit)
             except ValueError:
                 return gen_resp('Bad limit argument.','FAIL')
-        lst = purge_old(Lobby.query.filter_by(type = "Public").limit(l).all())
+        lst = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).limit(l).all())
         resp = {}
         for n in lst:
             lobby = {
@@ -276,10 +271,12 @@ def lobby_server():
         if player_name:
             new_id = random.randint(1000,9999)
             while True:
-                if Lobby.query.filter_by(code=new_id).first() is None:
-                    break
+                l = Lobby.query.filter_by(code=new_id).first()
+                if l:
+                    if purge_old([l]) != []:
+                        new_id = random.randint(1000,9999)
                 else:
-                    new_id = random.randint(1000,9999)
+                    break
             new_room = Lobby(new_id,type)
             new_player = Player(player_name,1)
             new_room.players.append(new_player)
@@ -291,7 +288,7 @@ def lobby_server():
             threading.Thread(target=update_webhook).start()
             return r
     elif action == "list":
-        l = purge_old(Lobby.query.filter_by(type = "Public").all())
+        l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).all())
         resp = {
             'msg' : 'OK',
             'status' : 'OK',
@@ -352,7 +349,10 @@ def update_webhook():
         'action' : 'webhook',
         'key' : DISCORD_KEY
     }
-    requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS)
+    try:
+        requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS,timeout=0.001)
+    except requests.exceptions.Timeout:
+        pass
 
 '''
 if __name__ == '__main__':
