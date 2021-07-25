@@ -353,7 +353,7 @@ def update_webhook():
         'key' : DISCORD_KEY
     }
     try:
-        requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS,timeout=0.001)
+        requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS,timeout=1)
     except requests.exceptions.Timeout:
         pass
 
