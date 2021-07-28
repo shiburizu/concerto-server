@@ -135,6 +135,13 @@ class Lobby(db.Model):
                         p2.target = None
                         p2.ip = None
                         db.session.add(p2)
+            else: #iterate over players only if we do not have a target set
+                for i in self.players:
+                    if i.target == id:
+                        i.status = "idle"
+                        i.target = None
+                        i.ip = None
+                        db.session.add(i)
             p1.status = "idle"
             p1.target = None
             p1.ip = None
