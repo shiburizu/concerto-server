@@ -108,6 +108,17 @@ class Lobby(db.Model):
         else:
             return gen_resp('Not in lobby.','FAIL')
 
+    def pre_accept(self,id,target): #set target to potential player
+        p1 = self.validate_id(target)
+        p2 = self.validate_id(id)
+        if p1 and p2:
+            p2.target = target
+            db.session.add(p2)
+            db.session.commit()
+            return gen_resp('OK','OK')
+        else:
+            return gen_resp('Not in lobby.','FAIL')
+
     def accept_challenge(self,id,target):
         p1 = self.validate_id(target)
         p2 = self.validate_id(id)
@@ -136,13 +147,6 @@ class Lobby(db.Model):
                         p2.target = None
                         p2.ip = None
                         db.session.add(p2)
-            else: #iterate over players only if we do not have a target set
-                for i in self.players:
-                    if i.target == id:
-                        i.status = "idle"
-                        i.target = None
-                        i.ip = None
-                        db.session.add(i)
             p1.status = "idle"
             p1.target = None
             p1.ip = None
@@ -233,11 +237,18 @@ def create_tables():
 
 @app.route('/v')
 def version_check():
-    if request.args.get('action') == 'check':
-        if request.args.get('version') in CURRENT_VERSION:
+    action = request.args.get('action')
+    version = request.args.get('version')
+    name = request.args.get('name')
+    if action == 'check':
+        if version in CURRENT_VERSION:
             return gen_resp('OK','OK')
         else:
             return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
+    elif action == 'login':
+        if version in CURRENT_VERSION:
+            return gen_resp('OK','OK')
+    
 
 @app.route('/s') #statistics
 def stats():
