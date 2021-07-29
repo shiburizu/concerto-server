@@ -357,6 +357,8 @@ def lobby_server():
             if l.secret == int(secret):
                 if action == "challenge":
                     return l.send_challenge(int(player_id),int(target_id),player_ip)
+                elif action == "pre_accept":
+                    return l.pre_accept(int(player_id),int(target_id))
                 elif action == "accept":
                     return l.accept_challenge(int(player_id),int(target_id))
                 elif action == "end":
