@@ -115,6 +115,7 @@ class Lobby(db.Model):
             p1.status = "playing"
             p2.status = "playing"
             p2.target = target
+            p2.ip = p1.ip
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
@@ -158,10 +159,18 @@ class Lobby(db.Model):
             if p1.target:
                 p2 = self.validate_id(p1.target)
                 if p2:
-                    p2.status = "idle"
-                    p2.target = None
-                    p2.ip = None
-                    db.session.add(p2)
+                    if p2.target == id: #make sure other player is targeting us
+                        p2.status = "idle"
+                        p2.target = None
+                        p2.ip = None
+                        db.session.add(p2)
+            else: #iterate over players only if we do not have a target set
+                for i in self.players:
+                    if i.target == id:
+                        i.status = "idle"
+                        i.target = None
+                        i.ip = None
+                        db.session.add(i)
             self.players.remove(p1)
             db.session.delete(p1)
             db.session.commit()
