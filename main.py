@@ -30,7 +30,6 @@ class Lobby(db.Model):
         self.last_id = 1 #last ID assigned to keep IDs unique
         if type:
             self.type = type
-
         else:
             self.type = 'Private'
 
@@ -413,7 +412,7 @@ def lobby_server():
         else:
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
-    
+
 '''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
