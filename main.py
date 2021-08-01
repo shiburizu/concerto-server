@@ -280,12 +280,21 @@ def stats():
             resp.update({n.code:lobby})
         return resp
     elif action == 'check':
-        l = purge_old([Lobby.query.filter_by(code=int(lobby_id)).first()])
-        if l != []:
+        if lobby_id in aliases:
             resp = gen_resp('OK','OK')
-            resp.update({'type':l[0].type})
+            resp.update({'type':'Private'})
             return resp
-        return gen_resp('Lobby does not exist.','FAIL')
+        try:
+            int(lobby_id)
+        except ValueError:
+            return gen_resp('Invalid lobby ID','FAIL')
+        else:
+            l = purge_old([Lobby.query.filter_by(code=int(lobby_id)).first()])
+            if l != []:
+                resp = gen_resp('OK','OK')
+                resp.update({'type':l[0].type})
+                return resp
+            return gen_resp('Lobby does not exist.','FAIL')
     return gen_resp('Invalid stats action','FAIL')
 
 
