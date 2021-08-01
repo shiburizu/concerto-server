@@ -12,8 +12,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
 
 db = SQLAlchemy(app)
 
-pf = open('bad_words.json')
-filter = json.load(pf)
+filter = json.load(open('bad_words.json'))
+
+aliases = json.load(open('aliases.json'))
 
 class Lobby(db.Model):
     uid = db.Column(db.Integer, primary_key=True, unique=True)
@@ -22,6 +23,7 @@ class Lobby(db.Model):
     secret = db.Column(db.Integer, nullable=False) #secret for authentication
     last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
     type = db.Column(db.String(32), nullable=False) #lobby type for filtering
+    alias = db.Column(db.String(8), nullable=True) #vanity alias
 
     def __init__(self,new_id,type):
         self.secret = random.randint(1000,9999) #secret required for lobby actions
@@ -52,9 +54,9 @@ class Lobby(db.Model):
                 'msg' : msg,
                 'idle' : [[i.name,i.lobby_id] for i in self.players if i.status == 'idle'],
                 'playing' : self.playing(),
-                'challenges' : self.challenges(player_id)
+                'challenges' : self.challenges(player_id),
+                'alias' : self.alias
             }
-            #print(resp)
             return resp
         return gen_resp('Not in lobby.','FAIL')
 
@@ -288,6 +290,82 @@ def stats():
         return gen_resp('Lobby does not exist.','FAIL')
     return gen_resp('Invalid stats action','FAIL')
 
+
+def create_lobby(player_name,type,alias=None):
+    if player_name:
+        new_id = random.randint(1000,9999)
+        while True:
+            l = Lobby.query.filter_by(code=new_id).first()
+            if l:
+                if purge_old([l]) != []:
+                    new_id = random.randint(1000,9999)
+            else:
+                break
+        new_room = Lobby(new_id,type)
+        new_player = Player(player_name,1)
+        new_room.players.append(new_player)
+        if alias:
+            if alias in aliases:
+                new_room.alias = alias
+        db.session.add(new_room)
+        db.session.add(new_player)
+        db.session.commit()
+        r = new_room.response(1,msg=1)
+        r['secret'] = new_room.secret
+        r['type'] = new_room.type
+        return r
+    else:
+        return gen_resp('No player name for creator provided.','FAIL')
+
+def list_lobbies():
+    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).all())
+    resp = {
+        'msg' : 'OK',
+        'status' : 'OK',
+        'lobbies' : [[i.code,len(i.players)] for i in l]
+    }
+    return resp
+
+def join_lobby(lobby_id,player_name):
+    if not lobby_id:
+        return gen_resp('Lobby ID is empty','FAIL')
+    try:
+        int(lobby_id)
+    except ValueError:
+        if lobby_id in aliases: #check if code is in alias list
+            if player_name:
+                l = Lobby.query.filter_by(alias=lobby_id).first()
+                if l:
+                    l.prune()
+                    p = l.join(player_name)
+                    resp = l.response(p,msg=p)
+                    resp['secret'] = l.secret
+                    resp['type'] = l.type
+                    return resp
+                else:
+                    return create_lobby(player_name,"Private",alias=lobby_id)
+            else:
+                return gen_resp('No player name provided.','FAIL')
+        else:
+            return gen_resp('Invalid lobby code.','FAIL')
+    else:
+        if player_name:
+            l = Lobby.query.filter_by(code=int(lobby_id)).first()
+            if l:
+                l.prune()
+                if l.players != []:
+                    p = l.join(player_name)
+                    resp = l.response(p,msg=p)
+                    resp['secret'] = l.secret
+                    resp['type'] = l.type
+                    return resp
+                else:
+                    db.session.delete(l)
+                    db.session.commit()
+                    return gen_resp('Empty lobby found.','FAIL')
+            return gen_resp('Lobby not found.','FAIL')
+        return gen_resp('No player name provided.','FAIL')
+
 @app.route('/l') #lobby functions
 def lobby_server():
     action = request.args.get('action')
@@ -299,54 +377,12 @@ def lobby_server():
     secret = request.args.get('secret')
     type = request.args.get('type')
     
-    if action == 'create':
-        if player_name:
-            new_id = random.randint(1000,9999)
-            while True:
-                l = Lobby.query.filter_by(code=new_id).first()
-                if l:
-                    if purge_old([l]) != []:
-                        new_id = random.randint(1000,9999)
-                else:
-                    break
-            new_room = Lobby(new_id,type)
-            new_player = Player(player_name,1)
-            new_room.players.append(new_player)
-            db.session.add(new_room)
-            db.session.add(new_player)
-            db.session.commit()
-            r = new_room.response(1,msg=1)
-            r['secret'] = new_room.secret
-            return r
+    if action == "create":
+        return create_lobby(player_name,type)
+    elif action == "join":
+        return join_lobby(lobby_id,player_name)
     elif action == "list":
-        l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).all())
-        resp = {
-            'msg' : 'OK',
-            'status' : 'OK',
-            'lobbies' : [[i.code,len(i.players)] for i in l]
-        }
-        #print(resp)
-        return resp
-    elif action == "join" and lobby_id:
-        try:
-            int(lobby_id)
-        except ValueError:
-            return gen_resp('Invalid lobby code.','FAIL')
-        if player_name:
-            l = Lobby.query.filter_by(code=int(lobby_id)).first()
-            if l:
-                l.prune()
-                if l.players != []:
-                    p = l.join(player_name)
-                    resp = l.response(p,msg=p)
-                    resp['secret'] = l.secret
-                    return resp
-                else:
-                    db.session.delete(l)
-                    db.session.commit()
-                    return gen_resp('Empty lobby found.','FAIL')
-            return gen_resp('Lobby not found.','FAIL')
-        return gen_resp('No player name provided.','FAIL')
+        return list_lobbies()
     elif lobby_id and secret:
         try:
             int(lobby_id)
