@@ -268,7 +268,7 @@ def stats():
                 l = int(limit)
             except ValueError:
                 return gen_resp('Bad limit argument.','FAIL')
-        lst = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).limit(l).all())
+        lst = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).limit(l).order_by(Lobby.code).all())
         resp = {}
         for n in lst:
             lobby = {
