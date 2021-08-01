@@ -330,7 +330,7 @@ def create_lobby(player_name,type,alias=None):
         return gen_resp('No player name for creator provided.','FAIL')
 
 def list_lobbies():
-    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).all())
+    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
     resp = {
         'msg' : 'OK',
         'status' : 'OK',
