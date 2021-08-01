@@ -5,8 +5,6 @@ import requests
 import json
 app = Flask(__name__)
 
-DISCORD_KEY = os.environ['DISCORD_KEY'] #to send requests to the secondary server
-
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
@@ -18,6 +16,7 @@ class Lobby(db.Model):
     secret = db.Column(db.Integer, nullable=False) #secret for authentication
     last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
     type = db.Column(db.String(32), nullable=False) #lobby type for filtering
+    alias = db.Column(db.String(8), nullable=True) #vanity alias
 
     def prune(self):
         now = datetime.datetime.now()
@@ -91,22 +90,9 @@ def purge_old(lst):
             lst.remove(i)
         db.session.commit()
     return lst
-
-@app.before_first_request
-def create_tables():
+    
+def update():
     db.create_all()
-
-@app.route('/')
-def actions():
-    action = request.args.get('action')
-    key = request.args.get('key')
-    if key != DISCORD_KEY:
-        return 'BAD'
-    if action == 'webhook':
-        update_webhook()
-        return 'OK'
-
-def update_webhook():
     hooks = []
     messages = []
     n = 0
@@ -154,7 +140,7 @@ def update_webhook():
     players = db.session.query(Player).count()
 
     data = {
-        'content': '**__Public Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n%s playing now.\n' % players,
+        'content': '**__Public Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n%s connected to lobbies.\n' % players,
         'embeds': embeds 
     }
     if lobbies != []:
@@ -164,8 +150,3 @@ def update_webhook():
         url = a + "/messages/" + b
         resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
         resp.raise_for_status()
-'''
-if __name__ == '__main__':
-	port = int(os.environ.get('PORT', 5000))
-	app.run(host='0.0.0.0', port=port, debug=False)
-'''
