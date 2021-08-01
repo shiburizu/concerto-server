@@ -80,7 +80,7 @@ class Lobby(db.Model):
     def challenges(self,player_id):
         resp = []
         for i in self.players:
-            if i.target == player_id and i.status != 'playing':
+            if i.target == player_id and i.status != 'playing' and i.ip != None:
                 resp.append([i.name,i.lobby_id,i.ip])
         return resp
 
