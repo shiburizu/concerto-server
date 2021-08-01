@@ -1,8 +1,6 @@
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
-import requests
-import threading
 import json
 
 app = Flask(__name__)
