@@ -5,10 +5,9 @@ import json
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['7-23-2021']
+CURRENT_VERSION = ['8-1-2021']
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
-#os.environ['DATABASE_CONCERTO']
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
 
@@ -414,7 +413,9 @@ def lobby_server():
         else:
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
-
+    
+'''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
 	app.run(host='0.0.0.0', port=port, debug=False)
+'''
