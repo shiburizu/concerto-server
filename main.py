@@ -243,9 +243,9 @@ def version_check():
             return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
     elif action == 'login':
         if version in CURRENT_VERSION:
-            if name not in filter: #cheap method first
+            if name.lower() not in filter: #cheap method first
                 for i in filter:
-                    if i in name:
+                    if i in name.lower():
                         return gen_resp('Your name contains banned words.','FAIL')
                 return gen_resp('OK','OK')
             else:
