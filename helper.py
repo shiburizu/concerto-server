@@ -1,8 +1,9 @@
-from flask import Flask, request
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os,datetime
 import requests
 import json
+import time
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
@@ -150,3 +151,8 @@ def update():
         url = a + "/messages/" + b
         resp = requests.patch(url, data=json.dumps(data), headers={'Content-Type': 'application/json'})
         resp.raise_for_status()
+
+if __name__ == '__main__':
+    while True:
+        update()
+        time.sleep(10)
