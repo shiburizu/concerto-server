@@ -327,27 +327,29 @@ def list_lobbies():
     return resp
 
 def join_lobby(lobby_id,player_name):
+    #validation
     if not lobby_id:
         return gen_resp('Lobby ID is empty','FAIL')
+    #check if code is in alias list
+    if lobby_id in aliases:
+        if player_name:
+            l = Lobby.query.filter_by(alias=lobby_id).first()
+            if l:
+                l.prune()
+                p = l.join(player_name)
+                resp = l.response(p,msg=p)
+                resp['secret'] = l.secret
+                resp['type'] = l.type
+                return resp
+            else:
+                return create_lobby(player_name,"Private",alias=lobby_id)
+        else:
+            return gen_resp('No player name provided.','FAIL')
+    #not in aliases, so check by number codes
     try:
         int(lobby_id)
     except ValueError:
-        if lobby_id in aliases: #check if code is in alias list
-            if player_name:
-                l = Lobby.query.filter_by(alias=lobby_id).first()
-                if l:
-                    l.prune()
-                    p = l.join(player_name)
-                    resp = l.response(p,msg=p)
-                    resp['secret'] = l.secret
-                    resp['type'] = l.type
-                    return resp
-                else:
-                    return create_lobby(player_name,"Private",alias=lobby_id)
-            else:
-                return gen_resp('No player name provided.','FAIL')
-        else:
-            return gen_resp('Invalid lobby code.','FAIL')
+        return gen_resp('Invalid lobby code.','FAIL')
     else:
         if player_name:
             l = Lobby.query.filter_by(code=int(lobby_id)).first()
