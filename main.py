@@ -3,16 +3,19 @@ from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import requests
 import threading
+import json
 
 app = Flask(__name__)
 
 CURRENT_VERSION = ['7-23-2021']
 
-DISCORD_KEY = os.environ['DISCORD_KEY'] #to send requests to the secondary server
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///concerto.db'
+#os.environ['DATABASE_CONCERTO']
 
 db = SQLAlchemy(app)
+
+pf = open('bad_words.json')
+filter = json.load(pf)
 
 class Lobby(db.Model):
     uid = db.Column(db.Integer, primary_key=True, unique=True)
@@ -28,8 +31,7 @@ class Lobby(db.Model):
         self.last_id = 1 #last ID assigned to keep IDs unique
         if type:
             self.type = type
-            if self.type == 'Public':
-                threading.Thread(target=update_webhook).start()
+
         else:
             self.type = 'Private'
 
@@ -65,7 +67,6 @@ class Lobby(db.Model):
         db.session.add(p)
         db.session.add(self)
         db.session.commit()
-        threading.Thread(target=update_webhook).start()
         return self.last_id
 
     def playing(self):
@@ -130,8 +131,6 @@ class Lobby(db.Model):
             db.session.add(p1)
             db.session.add(p2)
             db.session.commit()
-            if self.type == 'Public':
-                threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
@@ -152,8 +151,6 @@ class Lobby(db.Model):
             p1.ip = None
             db.session.add(p1)
             db.session.commit()
-            if self.type == 'Public':
-                threading.Thread(target=update_webhook).start()
             return gen_resp('OK','OK')
         return gen_resp('Not in lobby.','FAIL')
 
@@ -178,8 +175,6 @@ class Lobby(db.Model):
             self.players.remove(p1)
             db.session.delete(p1)
             db.session.commit()
-            if self.type == 'Public':
-                threading.Thread(target=update_webhook).start()
         return gen_resp('OK','OK')
 
 class Player(db.Model):
@@ -240,14 +235,22 @@ def version_check():
     action = request.args.get('action')
     version = request.args.get('version')
     name = request.args.get('name')
-    if action == 'check':
+    if action == 'check': #LEGACY CODE, will be removed.
         if version in CURRENT_VERSION:
             return gen_resp('OK','OK')
         else:
             return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
     elif action == 'login':
         if version in CURRENT_VERSION:
-            return gen_resp('OK','OK')
+            if name not in filter: #cheap method first
+                for i in filter:
+                    if i in name:
+                        return gen_resp('Your name contains banned words.','FAIL')
+                return gen_resp('OK','OK')
+            else:
+                return gen_resp('Your name contains banned words.','FAIL')
+        else:
+            return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
     
 
 @app.route('/s') #statistics
@@ -376,18 +379,6 @@ def lobby_server():
             return gen_resp('No lobby found','FAIL')
     return gen_resp('No action match','FAIL')
 
-def update_webhook():
-    PARAMS = {
-        'action' : 'webhook',
-        'key' : DISCORD_KEY
-    }
-    try:
-        requests.get('https://concerto-discord.herokuapp.com/',params=PARAMS,timeout=1)
-    except requests.exceptions.Timeout:
-        pass
-
-'''
 if __name__ == '__main__':
 	port = int(os.environ.get('PORT', 5000))
 	app.run(host='0.0.0.0', port=port, debug=False)
-'''
