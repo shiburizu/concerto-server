@@ -99,11 +99,13 @@ class Lobby(db.Model):
     def send_challenge(self,id,target,ip):
         p = self.validate_id(id)
         if p:
-            p.target = target
-            p.ip = ip
-            db.session.add(p)
-            db.session.commit()
-            return gen_resp('OK','OK')
+            if ip:
+                p.target = target
+                p.ip = ip
+                db.session.add(p)
+                db.session.commit()
+                return gen_resp('OK','OK')
+            return gen_resp('IP not provided','FAIL')
         else:
             return gen_resp('Not in lobby.','FAIL')
 
