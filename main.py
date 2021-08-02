@@ -22,7 +22,7 @@ class Lobby(db.Model):
     secret = db.Column(db.Integer, nullable=False) #secret for authentication
     last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
     type = db.Column(db.String(32), nullable=False) #lobby type for filtering
-    alias = db.Column(db.String(8), nullable=True) #vanity alias
+    alias = db.Column(db.String(16), nullable=True) #vanity alias
 
     def __init__(self,new_id,type):
         self.secret = random.randint(1000,9999) #secret required for lobby actions
