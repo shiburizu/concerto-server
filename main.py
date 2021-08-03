@@ -127,9 +127,9 @@ class Lobby(db.Model):
             p1.status = "playing"
             p2.status = "playing"
             p2.target = target
-            if p1.ip:
+            if p1.ip != None:
                 p2.ip = p1.ip
-            elif p2.ip:
+            elif p2.ip != None:
                 p1.ip = p2.ip
             db.session.add(p1)
             db.session.add(p2)
