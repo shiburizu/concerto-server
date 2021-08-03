@@ -5,7 +5,7 @@ import json
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['8-1-2021r2']
+CURRENT_VERSION = ['8-3-2021']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
