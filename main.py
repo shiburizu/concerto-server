@@ -5,7 +5,7 @@ import json
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['8-3-2021']
+CURRENT_VERSION = ['8-4-2021']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
@@ -124,17 +124,20 @@ class Lobby(db.Model):
         p1 = self.validate_id(target)
         p2 = self.validate_id(id)
         if p1 and p2:
-            p1.status = "playing"
-            p2.status = "playing"
-            p2.target = target
-            if p1.ip != None:
-                p2.ip = p1.ip
-            elif p2.ip != None:
-                p1.ip = p2.ip
-            db.session.add(p1)
-            db.session.add(p2)
-            db.session.commit()
-            return gen_resp('OK','OK')
+            if p1.status != "playing" and p1.status != "playing":
+                p1.status = "playing"
+                p2.status = "playing"
+                p2.target = target
+                if p1.ip != None:
+                    p2.ip = p1.ip
+                elif p2.ip != None:
+                    p1.ip = p2.ip
+                db.session.add(p1)
+                db.session.add(p2)
+                db.session.commit()
+                return gen_resp('OK','OK')
+            else:
+                return gen_resp('Already marked as playing.','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
 
