@@ -256,7 +256,7 @@ def version_check():
             else:
                 return gen_resp('Your name contains banned words.','FAIL')
         else:
-            return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
+            return gen_resp('UPDATE','FAIL')
     
 
 @app.route('/s') #statistics
