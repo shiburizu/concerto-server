@@ -5,7 +5,7 @@ import json
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['8-4-2021']
+CURRENT_VERSION = ['0.9']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
@@ -345,6 +345,8 @@ def join_lobby(lobby_id,player_name):
     #validation
     if not lobby_id:
         return gen_resp('Lobby ID is empty','FAIL')
+    if len(lobby_id) > 16:
+        return gen_resp('Invalid lobby code','FAIL')
     #check if code is in alias list
     if lobby_id in aliases:
         if player_name:
