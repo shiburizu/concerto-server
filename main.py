@@ -248,7 +248,8 @@ def version_check():
             current_version.raise_for_status()
             version_tag = current_version.json()["tag_name"]
         except:
-            return gen_resp('OK','OK') #let pass if fail by GitHub
+            print("FAILED TO GET GITHUB INFO")
+            pass #let pass if fail by GitHub
         if version == version_tag:
             if name.lower() not in filter: #cheap method first
                 for i in filter:
