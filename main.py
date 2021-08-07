@@ -249,20 +249,25 @@ def version_check():
             version_tag = current_version.json()["tag_name"]
         except:
             print("FAILED TO GET GITHUB INFO")
-            pass #let pass if fail by GitHub
-        if version == version_tag:
-            if name.lower() not in filter: #cheap method first
-                for i in filter:
-                    if i in name.lower():
-                        return gen_resp('Your name contains banned words.','FAIL')
+            version_tag = None
+        if version_tag == None or version == version_tag:
+            if valid_name(name):
                 return gen_resp('OK','OK')
             else:
                 return gen_resp('Your name contains banned words.','FAIL')
         else:
             return gen_resp('UPDATE','FAIL')
     return gen_resp('No action found.','FAIL')
-    
 
+def valid_name(name):
+    if name.lower() not in filter: #cheap method first
+        for i in filter:
+            if i in name.lower():
+                return False
+        return True
+    else:
+        return False
+    
 @app.route('/s') #statistics
 def stats():
     action = request.args.get('action')
