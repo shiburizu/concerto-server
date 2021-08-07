@@ -125,10 +125,13 @@ class Lobby(db.Model):
         p1 = self.validate_id(target)
         p2 = self.validate_id(id)
         if p1 and p2:
-            if p1.status != "playing" and p1.status != "playing":
+            if p1.status != "playing" and p2.status != "playing":
                 p1.status = "playing"
                 p2.status = "playing"
-                p2.target = target
+                if p2.target == None:
+                    p2.target = target
+                if p1.target == None:
+                    p1.target == id
                 if p1.ip != None and p2.ip == None:
                     p2.ip = p1.ip
                 elif p2.ip != None and p1.ip == None:
