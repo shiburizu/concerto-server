@@ -2,10 +2,11 @@ from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
 import json
+import requests
 
 app = Flask(__name__)
 
-CURRENT_VERSION = ['0.9']
+REPO_KEY = os.environ['REPO_KEY']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 
@@ -241,13 +242,14 @@ def version_check():
     action = request.args.get('action')
     version = request.args.get('version')
     name = request.args.get('name')
-    if action == 'check': #LEGACY CODE, will be removed.
-        if version in CURRENT_VERSION:
-            return gen_resp('OK','OK')
-        else:
-            return gen_resp('A newer version of Concerto is available. Visit concerto.shib.live to update.','FAIL')
-    elif action == 'login':
-        if version in CURRENT_VERSION:
+    if action == 'login':
+        try:
+            current_version = requests.get('https://api.github.com/repos/shiburizu/concerto-mbaacc/releases/latest',headers={'Authorization':'token %s' % REPO_KEY})
+            current_version.raise_for_status()
+            version_tag = current_version.json()["tag_name"]
+        except:
+            return gen_resp('OK','OK') #let pass if fail by GitHub
+        if version == version_tag:
             if name.lower() not in filter: #cheap method first
                 for i in filter:
                     if i in name.lower():
