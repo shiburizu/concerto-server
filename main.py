@@ -233,6 +233,15 @@ def purge_old(lst):
         db.session.commit()
     return lst
 
+def valid_name(name):
+    if name.lower() not in filter: #cheap method first
+        for i in filter:
+            if i in name.lower():
+                return False
+        return True
+    else:
+        return False
+
 @app.before_first_request
 def create_tables():
     db.create_all()
@@ -258,15 +267,6 @@ def version_check():
         else:
             return gen_resp('UPDATE','FAIL')
     return gen_resp('No action found.','FAIL')
-
-def valid_name(name):
-    if name.lower() not in filter: #cheap method first
-        for i in filter:
-            if i in name.lower():
-                return False
-        return True
-    else:
-        return False
     
 @app.route('/s') #statistics
 def stats():
