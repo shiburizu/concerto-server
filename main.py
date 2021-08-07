@@ -259,6 +259,7 @@ def version_check():
                 return gen_resp('Your name contains banned words.','FAIL')
         else:
             return gen_resp('UPDATE','FAIL')
+    return gen_resp('No action found.','FAIL')
     
 
 @app.route('/s') #statistics
