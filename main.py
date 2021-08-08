@@ -128,8 +128,6 @@ class Lobby(db.Model):
             if p1.status != "playing" and p2.status != "playing":
                 p1.status = "playing"
                 p2.status = "playing"
-                if p1.target == None:
-                    p1.target == id
                 if p1.ip != None and p2.ip == None:
                     p2.ip = p1.ip
                 elif p2.ip != None and p1.ip == None:
