@@ -122,23 +122,28 @@ class Lobby(db.Model):
         else:
             return gen_resp('Not in lobby.','FAIL')
 
+    def set_accept(self,id,target,ip=None):
+        player = self.validate_id(id)
+        if player and self.validate_id(target):
+            player.target = target
+            if ip:
+                player.ip = ip
+            player.status = "playing"
+            db.session.add(player)
+            db.session.commit()
+
     def accept_challenge(self,id,target):
         p1 = self.validate_id(target)
         p2 = self.validate_id(id)
         if p1 and p2:
-            if p1.status != "playing" and p2.status != "playing":
-                p1.status = "playing"
-                p2.status = "playing"
-                if p1.ip != None and p2.ip == None:
-                    p2.ip = p1.ip
-                elif p2.ip != None and p1.ip == None:
-                    p1.ip = p2.ip
-                db.session.add(p1)
-                db.session.add(p2)
-                db.session.commit()
-                return gen_resp('OK','OK')
-            else:
-                return gen_resp('Already marked as playing.','OK')
+            ip = None
+            if p1.ip != None:
+                ip = p1.ip
+            elif p2.ip != None:
+                ip = p2.ip
+            self.set_accept(id,target,ip)
+            self.set_accept(target,id,ip)
+            return gen_resp('OK','OK')
         else:
             return gen_resp('Not in lobby.','FAIL')
 
