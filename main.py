@@ -287,7 +287,7 @@ def cast():
         ip = i.find_game()
         if ip != None:
             return "<a href='concerto://watch:%s'>GAME FOUND</a>" % ip
-    return "NO GAME FOUND"
+    return "NOT FOUND"
 
 @app.route('/s') #statistics
 def stats():
