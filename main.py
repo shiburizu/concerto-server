@@ -35,6 +35,12 @@ class Lobby(db.Model):
         else:
             self.type = 'Private'
 
+    def find_game(self):
+        for i in self.players:
+            if i.status == "playing" and i.ip != None:
+                return i.ip
+        return None
+
     def prune(self):
         now = datetime.datetime.now()
         for i in self.players:
@@ -273,6 +279,16 @@ def version_check():
             return gen_resp('UPDATE','FAIL')
     return gen_resp('No action found.','FAIL')
     
+
+@app.route('/cast') #povertycast hook
+def cast():
+    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
+    for i in l:
+        ip = i.find_game()
+        if ip != None:
+            return "<a href='concerto://watch:%s'>GAME FOUND</a>" % ip
+    return "NO GAME FOUND"
+
 @app.route('/s') #statistics
 def stats():
     action = request.args.get('action')
