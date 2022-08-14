@@ -274,7 +274,7 @@ def version_check():
             if valid_name(name):
                 return gen_resp('OK','OK')
             else:
-                return gen_resp('Your name contains banned words. The server filter may overreach or cause unintended blocks. Please refer to the help section concerto.shib.live for guidance on reporting potential false positives.','FAIL')
+                return gen_resp('Your name contains banned words. The filter may overreach or cause unintended blocks. Please refer to the "help" section at concerto.shib.live for guidance on reporting potential false positives.','FAIL')
         else:
             return gen_resp('UPDATE','FAIL')
     return gen_resp('No action found.','FAIL')
