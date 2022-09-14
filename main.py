@@ -1,4 +1,3 @@
-from operator import ipow
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import random,os,datetime
@@ -434,11 +433,15 @@ def lobby_server():
         return list_lobbies()
     elif lobby_id and secret:
         try:
-            int(lobby_id)
             int(secret)
         except ValueError:
-            return gen_resp('Invalid lobby code.','FAIL')
-        l = Lobby.query.filter_by(code=int(lobby_id)).first()
+            return gen_resp('Lobby handshake failed.','FAIL')
+        l = Lobby.query.filter_by(alias=lobby_id).first()
+        if not l:
+            try:
+                l = Lobby.query.filter_by(code=int(lobby_id)).first()
+            except ValueError:
+                return gen_resp('Invalid lobby code.','FAIL')
         if l:
             if l.secret == int(secret):
                 if action == "challenge":
