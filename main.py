@@ -222,7 +222,6 @@ def gen_resp(msg,status):
         'status' : status,
         'msg' : msg
     }
-    print("FAIL: %s / %s" % (status,msg))
     return resp
 
 def purge_old(lst):
