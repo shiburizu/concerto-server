@@ -278,6 +278,49 @@ def version_check():
             return gen_resp('UPDATE','FAIL')
     return gen_resp('No action found.','FAIL')
     
+@app.route('/public') #public lobby list
+def public():
+    lobby_resp = {}
+    lobbies = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
+    for l in lobbies:
+        # TODO: random lobby colors would be cool and creation timestamps
+        lobby = {
+            'title': 'Lobby #' + str(l.code),
+            'url': 'https://invite.meltyblood.club/' + str(l.code),
+            'color': 9906987
+        }
+        playing = ""
+        idle = "" 
+        found_ids = [] 
+        for p in l.players:
+            if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
+                playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
+                found_ids.append(p.lobby_id)
+                found_ids.append(p.target)
+            if p.status == 'idle':
+                idle += p.name + '\n'
+
+        if playing != "":
+            lobby['playing'] = playing
+        if idle != "":
+            lobby['idle'] = idle
+
+        lobby_resp[str(l.code)] = lobby
+        if len(lobby_resp) >= 10:
+            break
+
+    #clear private players
+    purge_old(Lobby.query.filter_by(type = "Private").all())
+    players = db.session.query(Player).count()
+
+    #data = {
+    #    'content': '**__Public Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n%s connected to lobbies. List updated every 10 minutes.\n' % players,
+    #    'embeds': embeds 
+    #}
+    #if lobbies != []:
+    #    data['content'] += "Click on the lobby name to join."
+
+    return lobby_resp
 
 @app.route('/cast') #povertycast hook
 def cast():
