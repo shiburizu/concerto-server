@@ -283,15 +283,15 @@ def public():
     lobby_resp = {}
     lobbies = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
     for l in lobbies:
-        # TODO: random lobby colors would be cool and creation timestamps
-        lobby = {
-            'title': 'Lobby #' + str(l.code),
-            'url': 'https://invite.meltyblood.club/' + str(l.code),
-            'color': 9906987
-        }
+
+        lobby = {}
+        #'title': 'Lobby #' + str(l.code),
+        #'url': 'https://invite.meltyblood.club/' + str(l.code),
+        #'color': 9906987
         playing = ""
         idle = "" 
         found_ids = [] 
+
         for p in l.players:
             if p.status == 'playing' and p.lobby_id not in found_ids and p.target not in found_ids and p.ip is not None:
                 playing += p.name + ' vs ' + l.name_by_id(p.target) + '\n'
@@ -312,6 +312,7 @@ def public():
     #clear private players
     purge_old(Lobby.query.filter_by(type = "Private").all())
     players = db.session.query(Player).count()
+    lobby_resp['Players'] = players
 
     #data = {
     #    'content': '**__Public Lobbies__**\nLobbies created with Concerto: <https://concerto.shib.live>\n%s connected to lobbies. List updated every 10 minutes.\n' % players,
