@@ -131,7 +131,7 @@ class Lobby(db.Model):
         player = self.validate_id(id)
         if player and self.validate_id(target):
             player.target = target
-            if ip:
+            if ip != None:
                 player.ip = ip
             player.status = "playing"
             db.session.add(player)
@@ -142,10 +142,17 @@ class Lobby(db.Model):
         p2 = self.validate_id(id)
         if p1 and p2:
             ip = None
-            if p1.ip != None:
-                ip = p1.ip
-            elif p2.ip != None:
-                ip = p2.ip
+            try:
+                if len(p1.ip) > 0:
+                    ip = p1.ip
+            except:
+                pass
+            try:
+                if len(p2.ip) > 0:
+                    if ip == None:
+                        ip = p2.ip
+            except:
+                pass
             self.set_accept(id,target,ip)
             self.set_accept(target,id,ip)
             return gen_resp('OK','OK')
