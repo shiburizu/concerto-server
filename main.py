@@ -9,6 +9,7 @@ app = Flask(__name__)
 REPO_KEY = os.environ['REPO_KEY']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 
 db = SQLAlchemy(app)
 
@@ -24,8 +25,9 @@ class Lobby(db.Model):
     last_id = db.Column(db.Integer, nullable=False) #last player ID assigned to stay unique
     type = db.Column(db.String(32), nullable=False) #lobby type for filtering
     alias = db.Column(db.String(16), nullable=True) #vanity alias
+    game = db.Column(db.String(16), nullable = True) #if None, MBAACC lobby
 
-    def __init__(self,new_id,type):
+    def __init__(self,new_id,type,game=None):
         self.secret = random.randint(1000,9999) #secret required for lobby actions
         self.code = new_id
         self.last_id = 1 #last ID assigned to keep IDs unique
@@ -33,6 +35,10 @@ class Lobby(db.Model):
             self.type = type
         else:
             self.type = 'Private'
+        if game:
+            self.game = game
+        else:
+            self.game = 'mbaacc' #default behavior
 
     def find_game(self):
         for i in self.players:
@@ -205,7 +211,7 @@ class Player(db.Model):
     uid = db.Column(db.Integer, primary_key=True, unique=True) #id in the table
 
     lobby_id = db.Column(db.Integer, nullable=False) #id in the lobby
-    name = db.Column(db.String(16), nullable=False) #player name
+    name = db.Column(db.String(20), nullable=False) #player name
     last_ping = db.Column(db.DateTime, nullable=False) #timestamp of last ping
     status = db.Column(db.String(32), nullable=False) #current status
     ip = db.Column(db.String(32), nullable=True) #IP if challenging
@@ -269,7 +275,8 @@ def version_check():
     version = request.args.get('version')
     name = request.args.get('name')
     if action == 'login':
-        try:
+        #return gen_resp('OK','OK')
+        try: #TODO this should probably have a separate game lookup for version after we get EFZ live
             current_version = requests.get('https://api.github.com/repos/shiburizu/concerto-mbaacc/releases/latest',headers={'Authorization':'token %s' % REPO_KEY})
             current_version.raise_for_status()
             version_tag = current_version.json()["tag_name"]
@@ -287,8 +294,12 @@ def version_check():
     
 @app.route('/public') #public lobby list
 def public():
+    g = request.args.get('game')
+    if g is None:
+        g = 'mbaacc'
     lobby_resp = {}
-    lobbies = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
+    lobbies = purge_old(Lobby.query.filter_by(type = "Public",game = g).filter(Lobby.players.any()).order_by(Lobby.code).all())
+    
     for l in lobbies:
 
         lobby = {}
@@ -332,7 +343,7 @@ def public():
 
 @app.route('/cast') #povertycast hook
 def cast():
-    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
+    l = purge_old(Lobby.query.filter_by(type = "Public", game = 'mbaacc').filter(Lobby.players.any()).order_by(Lobby.code).all())
     for i in l:
         ip = i.find_game()
         if ip != None:
@@ -341,6 +352,9 @@ def cast():
 
 @app.route('/s') #statistics
 def stats():
+    g = request.args.get('game')
+    if g is None:
+        g = 'mbaacc'
     action = request.args.get('action')
     limit = request.args.get('limit')
     lobby_id = request.args.get('id')
@@ -351,7 +365,7 @@ def stats():
                 l = int(limit)
             except ValueError:
                 return gen_resp('Bad limit argument.','FAIL')
-        lst = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).limit(l).order_by(Lobby.code).all())
+        lst = purge_old(Lobby.query.filter_by(type = "Public", game = g).filter(Lobby.players.any()).limit(l).order_by(Lobby.code).all())
         resp = {}
         for n in lst:
             lobby = {
@@ -386,7 +400,7 @@ def stats():
     return gen_resp('Invalid stats action','FAIL')
 
 
-def create_lobby(player_name,type,alias=None):
+def create_lobby(player_name,type,alias=None,game='mbaacc'):
     if player_name:
         new_id = random.randint(1000,9999)
         while True:
@@ -396,7 +410,7 @@ def create_lobby(player_name,type,alias=None):
                     new_id = random.randint(1000,9999)
             else:
                 break
-        new_room = Lobby(new_id,type)
+        new_room = Lobby(new_id,type,game)
         new_player = Player(player_name,1)
         new_room.players.append(new_player)
         if alias:
@@ -412,16 +426,16 @@ def create_lobby(player_name,type,alias=None):
     else:
         return gen_resp('No player name for creator provided.','FAIL')
 
-def list_lobbies():
-    l = purge_old(Lobby.query.filter_by(type = "Public").filter(Lobby.players.any()).order_by(Lobby.code).all())
+def list_lobbies(game='mbaacc'):
+    l = purge_old(Lobby.query.filter_by(type = "Public",game=game).filter(Lobby.players.any()).order_by(Lobby.code).all())
     resp = {
         'msg' : 'OK',
         'status' : 'OK',
-        'lobbies' : [[i.code,len(i.players)] for i in l]
+        'lobbies' : [[i.code,i.game,len(i.players)] for i in l]
     }
     return resp
 
-def join_lobby(lobby_id,player_name):
+def join_lobby(lobby_id,player_name,game='mbaacc'):
     #validation
     if not lobby_id:
         return gen_resp('Lobby ID is empty','FAIL')
@@ -429,17 +443,20 @@ def join_lobby(lobby_id,player_name):
         return gen_resp('Invalid lobby code','FAIL')
     #check if code is in alias list
     if lobby_id in aliases:
-        if player_name:
+        if player_name: #prevent aliases from being used in 2 games at the same time for now
             l = Lobby.query.filter_by(alias=lobby_id).first()
             if l:
-                l.prune()
-                p = l.join(player_name)
-                resp = l.response(p,msg=p)
-                resp['secret'] = l.secret
-                resp['type'] = l.type
-                return resp
+                if game == l.game:
+                    l.prune()
+                    p = l.join(player_name)
+                    resp = l.response(p,msg=p)
+                    resp['secret'] = l.secret
+                    resp['type'] = l.type
+                    return resp
+                else:
+                    return gen_resp('Lobby alias is being used in a different game!','FAIL')
             else:
-                return create_lobby(player_name,"Private",alias=lobby_id)
+                return create_lobby(player_name,"Private",alias=lobby_id,game=game)
         else:
             return gen_resp('No player name provided.','FAIL')
     #not in aliases, so check by number codes
@@ -453,11 +470,14 @@ def join_lobby(lobby_id,player_name):
             if l:
                 l.prune()
                 if l.players != []:
-                    p = l.join(player_name)
-                    resp = l.response(p,msg=p)
-                    resp['secret'] = l.secret
-                    resp['type'] = l.type
-                    return resp
+                    if l.game == game:
+                        p = l.join(player_name)
+                        resp = l.response(p,msg=p)
+                        resp['secret'] = l.secret
+                        resp['type'] = l.type
+                        return resp
+                    else:
+                        return gen_resp('Lobby not found.','FAIL')
                 else:
                     db.session.delete(l)
                     db.session.commit()
@@ -475,19 +495,21 @@ def lobby_server():
     player_ip = request.args.get('ip')
     secret = request.args.get('secret')
     type = request.args.get('type')
-    
+    game = request.args.get('game')
+    if game == None:
+        game = 'mbaacc'
     if action == "create":
         return create_lobby(player_name,type)
     elif action == "join":
-        return join_lobby(lobby_id,player_name)
+        return join_lobby(lobby_id,player_name,game)
     elif action == "list":
-        return list_lobbies()
+        return list_lobbies(game)
     elif lobby_id and secret:
         try:
             int(secret)
         except ValueError:
             return gen_resp('Lobby handshake failed.','FAIL')
-        l = Lobby.query.filter_by(alias=lobby_id).first()
+        l = Lobby.query.filter_by(alias=lobby_id,game=game).first()
         if not l:
             try:
                 l = Lobby.query.filter_by(code=int(lobby_id)).first()
