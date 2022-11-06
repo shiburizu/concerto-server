@@ -496,11 +496,11 @@ def lobby_server():
     secret = request.args.get('secret')
     type = request.args.get('type')
     game = request.args.get('game')
-    for key in request.args:
-        print(key)
-        print(request.args.get(key))
-    if game == None:
-        game = 'mbaacc'
+    #for key in request.args:
+    #    print(key)
+    #    print(request.args.get(key))
+    #if game == None:
+    #    game = 'mbaacc'
     if action == "create":
         return create_lobby(player_name,type,game)
     elif action == "join":
