@@ -499,7 +499,7 @@ def lobby_server():
     if game == None:
         game = 'mbaacc'
     if action == "create":
-        return create_lobby(player_name,type)
+        return create_lobby(player_name,type,game)
     elif action == "join":
         return join_lobby(lobby_id,player_name,game)
     elif action == "list":
