@@ -496,6 +496,7 @@ def lobby_server():
     secret = request.args.get('secret')
     type = request.args.get('type')
     game = request.args.get('game')
+    print(game)
     if game == None:
         game = 'mbaacc'
     if action == "create":
