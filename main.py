@@ -431,7 +431,7 @@ def list_lobbies(game='mbaacc'):
     resp = {
         'msg' : 'OK',
         'status' : 'OK',
-        'lobbies' : [[i.code,i.game,len(i.players)] for i in l]
+        'lobbies' : [[i.code,len(i.players),i.game] for i in l]
     }
     return resp
 
