@@ -499,8 +499,7 @@ def lobby_server():
     #for key in request.args:
     #    print(key)
     #    print(request.args.get(key))
-    print("GAME: %s" % game)
-    if game != 'efz' or game != 'mbaacc':
+    if game != 'efz' and game != 'mbaacc':
         game = "mbaacc"
     if action == "create":
         return create_lobby(player_name,type,game=game)
