@@ -6,7 +6,8 @@ import requests
 
 app = Flask(__name__)
 
-REPO_KEY = os.environ['REPO_KEY']
+MBAACC_REPO_KEY = os.environ['MBAACC_REPO_KEY']
+EFZ_REPO_KEY = os.environ['EFZ_REPO_KEY']
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
@@ -274,12 +275,20 @@ def version_check():
     action = request.args.get('action')
     version = request.args.get('version')
     name = request.args.get('name')
+    game = request.args.get('game')
+    if game != 'efz' and game != 'mbaacc':
+        game = "mbaacc"
     if action == 'login':
         #return gen_resp('OK','OK')
         try: #TODO this should probably have a separate game lookup for version after we get EFZ live
-            current_version = requests.get('https://api.github.com/repos/shiburizu/concerto-mbaacc/releases/latest',headers={'Authorization':'token %s' % REPO_KEY})
-            current_version.raise_for_status()
-            version_tag = current_version.json()["tag_name"]
+            if game == 'mbaacc':
+                current_version = requests.get('https://api.github.com/repos/shiburizu/concerto-mbaacc/releases/latest',headers={'Authorization':'token %s' % MBAACC_REPO_KEY})
+                current_version.raise_for_status()
+                version_tag = current_version.json()["tag_name"]
+            elif game == 'efz':
+                current_version = requests.get('https://api.github.com/repos/shiburizu/concerto-efz/releases/latest',headers={'Authorization':'token %s' % EFZ_REPO_KEY})
+                current_version.raise_for_status()
+                version_tag = current_version.json()["tag_name"]
         except:
             print("FAILED TO GET GITHUB INFO")
             version_tag = None
