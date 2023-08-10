@@ -13,7 +13,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_CONCERTO']
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 
 db = SQLAlchemy(app)
-
+db.create_all()
 filter = json.load(open('bad_words.json'))
 
 aliases = json.load(open('aliases.json'))
